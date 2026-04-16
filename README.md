@@ -46,7 +46,8 @@ Turn 3: "Give me an example" → Provides RAG example
 
 ```
 agentic-ai-research-copilot/
-├── app.py              # Gradio UI — main entry point
+├── main.py             # FastAPI Server — main entry point
+├── static/index.html   # Custom UI Frontend
 ├── agent.py            # Agent logic + Reflection pattern
 ├── rag.py              # RAG pipeline (PDF → chunks → vectors → search)
 ├── memory.py           # Conversation memory (last 3 turns)
@@ -71,11 +72,11 @@ agentic-ai-research-copilot/
                     └──────────────┬───────────────────────────────┘
                                    │
                     ┌──────────────▼───────────────────────────────┐
-                    │           app.py (Gradio UI)                 │
-                    │  • Chat interface                            │
-                    │  • PDF upload panel                          │
+                    │           static/index.html                  │
+                    │  • Chat & System Interface                   │
+                    │  • PDF dropzone upload panel                 │
                     │  • Reflection status badge                   │
-                    │  • Agent status display                      │
+                    │  • Connected to backend via fetch APIs       │
                     └──────────────────────────────────────────────┘
 ```
 
@@ -129,7 +130,7 @@ GEMINI_API_KEY=your-api-key-here
 ### 3. Run
 
 ```bash
-python app.py
+python main.py
 ```
 
 Open **http://localhost:7860** in your browser 🚀
@@ -218,7 +219,7 @@ All settings are in `.env`:
 
 | Component | Technology |
 |-----------|------------|
-| **UI** | Gradio 5.0+ |
+| **UI/Backend** | FastAPI + Vanilla HTML/CSS/JS |
 | **LLM** | Ollama (local) / Google Gemini |
 | **Embeddings** | BGE-small-en-v1.5 (SentenceTransformers) |
 | **Vector Store** | ChromaDB (persistent) |
