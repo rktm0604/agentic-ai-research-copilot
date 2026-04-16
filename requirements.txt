@@ -1,5 +1,7 @@
 # Core
-gradio>=5.0
+fastapi>=0.100.0
+uvicorn>=0.23.0
+python-multipart>=0.0.6
 pypdf>=4.0
 chromadb>=1.0
 sentence-transformers>=3.0

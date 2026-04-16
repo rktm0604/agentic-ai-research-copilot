@@ -29,7 +29,8 @@ This is not a simple LLM wrapper — it implements autonomous reasoning, self-cr
 
 ```
 agentic-ai-research-copilot/
-├── app.py              # Gradio UI — main entry point
+├── app.py              # FastAPI server — main entry point
+├── static/index.html   # Custom HTML/CSS/JS frontend
 ├── agent.py            # Agent logic + Reflection pattern
 ├── rag.py              # RAG pipeline (PDF → chunks → vectors → search)
 ├── memory.py           # Conversation memory (last 3 turns)
