@@ -1,0 +1,14 @@
+# Core
+gradio>=5.0
+pypdf>=4.0
+chromadb>=1.0
+sentence-transformers>=3.0
+requests>=2.31
+python-dotenv>=1.0
+
+# OCR support (optional — for scanned PDFs)
+# pytesseract>=0.3
+# pdf2image>=1.16
+
+# Gemini API (optional — for Google Gemini LLM)
+# google-genai>=1.0
