@@ -1,44 +1,27 @@
 # 🧠 Agentic AI Research Copilot
 
-> Upload research documents • Ask questions • Get self-improving AI answers with citations
-
-An **agentic AI system** that goes beyond simple chatbots. It uses **RAG** (Retrieval-Augmented Generation), a **Reflection pattern** for self-correcting answers, and **conversation memory** to provide accurate, context-grounded responses from your research documents.
+**Vertical:** AI-powered Research & Document Assistant
 
 ---
 
-## ✨ What Makes This Agentic?
+## 📋 Description
 
-This is **NOT a basic chatbot**. The system implements three key agentic AI patterns:
+An **agentic AI system** that goes beyond basic chatbots. Upload research papers, ask questions, and receive **self-correcting, citation-grounded answers** powered by RAG retrieval, the Reflection pattern, and conversation memory.
 
-### 🔄 Reflection Pattern (Self-Correction)
-The agent doesn't just generate an answer — it **critiques its own response** and improves it:
+This is not a simple LLM wrapper — it implements autonomous reasoning, self-critique, and iterative improvement before delivering a response.
 
-```
-Query → Draft Response → Self-Review → Critique → Improved Response
-```
+---
 
-If the reflection finds issues (missing citations, incomplete answers, inaccuracies), the agent automatically regenerates a better response.
+## ✨ Features
 
-### 🔍 RAG (Retrieval-Augmented Generation)
-Answers are **grounded in your actual documents**, not hallucinated:
-
-```
-Query → Semantic Search → Retrieve Top Chunks → Generate Grounded Answer
-```
-
-- PDF loading with OCR fallback for scanned documents
-- Smart sentence-boundary chunking with page metadata
-- BGE embeddings stored in ChromaDB
-- Citations with page numbers in every answer
-
-### 💬 Conversation Memory
-The agent remembers the **last 3 exchanges** for context-aware follow-ups:
-
-```
-Turn 1: "What is RAG?" → Explains RAG
-Turn 2: "How does it work?" → Knows "it" refers to RAG
-Turn 3: "Give me an example" → Provides RAG example
-```
+- **PDF Upload** — Drag and drop research papers, textbooks, or reports
+- **RAG Retrieval** — Semantic search across uploaded documents using ChromaDB
+- **Self-Correcting AI** — Reflection pattern catches and fixes errors before you see them
+- **Page Citations** — Every answer includes exact source page numbers
+- **Conversation Memory** — Remembers the last 3 exchanges for contextual follow-ups
+- **Google Gemini Integration** — Primary LLM with local Ollama fallback
+- **OCR Support** — Handles scanned PDFs via pytesseract (optional)
+- **Clean Gradio UI** — Modern dark-themed interface with reflection badges
 
 ---
 
@@ -46,172 +29,152 @@ Turn 3: "Give me an example" → Provides RAG example
 
 ```
 agentic-ai-research-copilot/
-├── main.py             # FastAPI server — main entry point
-├── static/index.html   # Custom HTML/CSS/JS frontend
+├── app.py              # Gradio UI — main entry point
 ├── agent.py            # Agent logic + Reflection pattern
 ├── rag.py              # RAG pipeline (PDF → chunks → vectors → search)
 ├── memory.py           # Conversation memory (last 3 turns)
 ├── utils.py            # Config, logging, constants
-├── requirements.txt    # Python dependencies
+├── requirements.txt    # Minimal dependencies
 ├── .env.example        # Environment variable template
+├── .gitignore          # Keeps repo < 1 MB
 └── README.md           # This file
 ```
 
 ### System Flow
 
 ```
-┌─────────────┐     ┌──────────────────────────────────────────────┐
-│  User Input  │────▶│              agent.py (Brain)                │
-└─────────────┘     │                                              │
-                    │  1. Understand query (classify intent)       │
-                    │  2. Retrieve context ──▶ rag.py ──▶ ChromaDB │
-                    │  3. Generate draft response (LLM)            │
-                    │  4. Reflect: "Is this good enough?"          │
-                    │  5. If NO → Improve based on critique        │
-                    │  6. Store in memory ──▶ memory.py            │
-                    └──────────────┬───────────────────────────────┘
-                                   │
-                    ┌──────────────▼───────────────────────────────┐
-                    │           static/index.html                  │
-                    │  • Chat & PDF upload interface                │
-                    │  • Reflection status badges                   │
-                    │  • Memory sidebar                             │
-                    │  • Connected via fetch() APIs                 │
-                    └──────────────────────────────────────────────┘
+User uploads PDF  ──→  PyPDF extracts text  ──→  Smart chunking  ──→  ChromaDB (vectors)
+                                                                            │
+User asks question ──→ agent.py ──→ retrieve_context() ──→ Draft response   │
+                          │                                      │           │
+                          │              ┌───────────────────────┘           │
+                          │              ▼                                   │
+                          │     Reflection: "Is this accurate?"             │
+                          │         │ PASS → return answer                   │
+                          │         │ FAIL → regenerate with critique        │
+                          │              ▼                                   │
+                          └──→ Final answer with citations ──→ User
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🧠 Agentic Patterns
 
-### Prerequisites
+### 1. 🔄 Reflection Pattern (Self-Correction)
 
-- **Python 3.10+**
-- **Ollama** installed from [ollama.ai](https://ollama.ai) (for local LLM)
-- OR a **Google Gemini API key** (free tier available)
+The core differentiator. After generating a draft response, the agent acts as its own reviewer:
 
-### 1. Clone & Setup
+```
+Draft → LLM Review (Accuracy, Completeness, Citations, Clarity) → PASS/FAIL
+    └─ If FAIL → critique → improved answer → return
+    └─ If PASS → return original
+```
+
+**Implementation:** `agent.py` → `_reflect()` and `_improve_response()`
+
+### 2. 🔍 RAG (Retrieval-Augmented Generation)
+
+Grounds all answers in uploaded document content — eliminates hallucinations:
+
+```
+Query → BGE embeddings → ChromaDB semantic search → Top-5 chunks → LLM
+```
+
+**Implementation:** `rag.py` → `retrieve_context(query)`
+
+### 3. 💬 Memory (Short-Term Context)
+
+Sliding window of last 3 conversation turns, providing continuity:
+
+```python
+memory = ConversationMemory(max_turns=3)
+memory.add(query, response, citations)
+context = memory.get_context_string()  # Injected into every LLM prompt
+```
+
+**Implementation:** `memory.py` → `ConversationMemory`
+
+---
+
+## 🔗 Google Services Used
+
+| Service | Usage |
+|---------|-------|
+| **Google Gemini API** | Primary LLM for reasoning, reflection, and response generation |
+| **Model: gemini-2.0-flash** | Fast, high-quality inference for agentic workflows |
+
+Gemini is the **primary** LLM provider. If `GEMINI_API_KEY` is set, all agent calls go through Gemini. If not set (or if Gemini fails), the system automatically falls back to local Ollama.
+
+---
+
+## 🚀 How to Run
+
+### 1. Clone
 
 ```bash
 git clone https://github.com/rktm0604/agentic-ai-research-copilot.git
 cd agentic-ai-research-copilot
+```
 
-# Create virtual environment
-python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # Linux/Mac
+### 2. Install Dependencies
 
-# Install dependencies
+```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configure
+### 3. Configure (choose one)
 
+**Option A — Google Gemini (recommended):**
 ```bash
-# Copy the environment template
 cp .env.example .env
-
-# Edit .env to set your preferences (optional)
-# Default: Ollama with llama3.2:3b
+# Edit .env and set: GEMINI_API_KEY=your_key_here
 ```
 
-**Option A — Ollama (Local, Free):**
+**Option B — Local Ollama (free, no API key):**
 ```bash
 ollama pull llama3.2:3b
-ollama serve   # Keep running in background
+ollama serve
 ```
 
-**Option B — Google Gemini:**
-```bash
-# In .env, set:
-GEMINI_API_KEY=your-api-key-here
-```
-
-### 3. Run
+### 4. Run
 
 ```bash
-python main.py
+python app.py
 ```
 
 Open **http://localhost:7860** in your browser 🚀
 
 ---
 
-## 📖 Usage
+## 📖 Example Usage
 
-### Upload Documents
-1. Click "Upload PDFs" in the left panel
-2. Select one or more PDF files
-3. Click "Process Documents"
-4. Wait for indexing to complete
+### Step 1: Upload a Document
+Click **"Upload PDFs"** → select a research paper → click **"📥 Process Documents"**
 
-### Ask Questions
-Type your question in the chat box. The agent will:
-1. Search your documents for relevant context
-2. Generate a draft answer
-3. Self-review and improve the answer
-4. Display the response with citations
-
-### Example Queries
+### Step 2: Ask a Question
 ```
-"What are the key findings in this paper?"
-"Explain the methodology used in chapter 3"
-"Summarize the conclusions"
-"What does the author say about [topic]?"
-"Compare the approaches discussed on pages 5 and 12"
+User: What are the main findings of this study?
 ```
 
----
+### Step 3: Get a Self-Corrected Answer
+```
+Agent: The study identifies three key findings:
+1. ...  [Source: paper.pdf (p. 4)]
+2. ...  [Source: paper.pdf (p. 7)]
+3. ...  [Source: paper.pdf (p. 12)]
 
-## 🧠 Agentic Patterns Explained
-
-### Pattern 1: Reflection
-
-```python
-# In agent.py — the core loop:
-draft = generate_draft(query, context)     # Step 1: Generate
-passed, critique = reflect(draft)           # Step 2: Self-review
-if not passed:
-    answer = improve(draft, critique)       # Step 3: Self-correct
+🔄 Self-Corrected — Agent improved its answer after reflection
+> Critique: "Initial draft missed citation for finding #2"
 ```
 
-The agent asks itself: *"Does this answer fully address the question? Are citations correct? Is it clear?"*
-
-If the answer fails review, it regenerates using the critique as guidance.
-
-### Pattern 2: RAG Retrieval
-
-```python
-# In rag.py — grounded answers:
-context, citations = retrieve_context(query)  # Semantic search
-answer = generate(query + context)             # Grounded generation
+### Step 4: Follow Up (Memory-Aware)
 ```
+User: Can you elaborate on the second point?
+Agent: Building on the previous answer, finding #2 specifically...
+       [Source: paper.pdf (p. 7, 8)]
 
-### Pattern 3: Memory
-
-```python
-# In memory.py — contextual follow-ups:
-memory.add(query, response)                    # Store
-history = memory.get_context_string()           # Retrieve for next turn
+✅ Quality Verified — Response passed self-review
 ```
-
----
-
-## ⚙️ Configuration
-
-All settings are in `.env`:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name |
-| `OLLAMA_URL` | `http://localhost:11434` | Ollama API endpoint |
-| `GEMINI_API_KEY` | *(empty)* | Google Gemini API key (enables Gemini) |
-| `GEMINI_MODEL` | `gemini-2.0-flash` | Gemini model name |
-| `EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | Sentence transformer model |
-| `CHUNK_SIZE` | `1000` | Characters per text chunk |
-| `CHUNK_OVERLAP` | `200` | Overlap between chunks |
-| `TOP_K_RESULTS` | `5` | Number of search results |
-| `MEMORY_SIZE` | `3` | Conversation turns to remember |
 
 ---
 
@@ -219,23 +182,15 @@ All settings are in `.env`:
 
 | Component | Technology |
 |-----------|------------|
-| **UI/Backend** | FastAPI + Custom HTML/CSS/JS |
-| **LLM** | Ollama (local) / Google Gemini |
+| **UI** | Gradio 5+ |
+| **Primary LLM** | Google Gemini API (gemini-2.0-flash) |
+| **Fallback LLM** | Ollama (llama3.2:3b, local) |
 | **Embeddings** | BGE-small-en-v1.5 (SentenceTransformers) |
 | **Vector Store** | ChromaDB (persistent) |
-| **PDF Parsing** | PyPDF + pytesseract (OCR) |
-| **Config** | python-dotenv |
+| **PDF Parsing** | PyPDF + OCR fallback |
 
 ---
 
-## 👨‍💻 Author
+## 👤 Built By
 
-**Raktim Banerjee** — Computer Science Engineering Student
-
-Built as part of exploring agentic AI patterns for research automation.
-
----
-
-## 📄 License
-
-MIT License — see [LICENSE](LICENSE) for details.
+**Raktim Banerjee** — [GitHub](https://github.com/rktm0604)

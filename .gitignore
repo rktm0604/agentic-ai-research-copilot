@@ -5,26 +5,23 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-.eggs/
 
-# Virtual environment
+# Environment
+.env
 venv/
 .venv/
-env/
+
+# Data (keep repo < 1 MB)
+*.pdf
+*.db
+chroma_db/
+chroma/
+uploads/
 
 # IDE
 .vscode/
 .idea/
 *.swp
-*.swo
-
-# Environment
-.env
-
-# Data
-chroma_db/
-uploads/
-*.pdf
 
 # OS
 .DS_Store
