@@ -72,6 +72,16 @@ Draft → LLM Review (Accuracy, Completeness, Citations, Clarity) → PASS/FAIL
 
 **Implementation:** `agent.py` → `_reflect()` and `_improve_response()`
 
+#### Why Reflection?
+
+Unlike traditional RAG systems, this system **evaluates its own responses** before returning them to the user.
+
+This improves reliability by:
+- Detecting missing or incomplete answers
+- Correcting factual errors before the user sees the output
+- Ensuring better citation grounding against source documents
+- Reducing hallucinations through structured self-critique
+
 ### 2. 🔍 RAG (Retrieval-Augmented Generation)
 
 Grounds all answers in uploaded document content — eliminates hallucinations:
@@ -176,6 +186,19 @@ Agent: Building on the previous answer, finding #2 specifically...
 ✅ Quality Verified — Response passed self-review
 ```
 
+### Example Query
+
+```
+User: "Summarize the key findings from the uploaded report"
+
+Agent Response:
+- The report identifies a 42% increase in renewable energy adoption globally.
+- Solar power installations saw the largest growth due to reduced costs.
+- Wind energy adoption remained stagnant from supply chain issues.
+
+📚 Sources: Climate_Report.pdf (p. 3, 5)
+```
+
 ---
 
 ## 🛠️ Tech Stack
@@ -188,6 +211,30 @@ Agent: Building on the previous answer, finding #2 specifically...
 | **Embeddings** | BGE-small-en-v1.5 (SentenceTransformers) |
 | **Vector Store** | ChromaDB (persistent) |
 | **PDF Parsing** | PyPDF + OCR fallback |
+
+---
+
+## 📌 Assumptions
+
+- Users upload readable PDF documents (text-based or OCR-compatible scanned)
+- Internet/API access is available when using Google Gemini
+- The system is designed for small-to-medium document sets (1–20 PDFs)
+- Ollama must be running locally if Gemini API key is not configured
+
+---
+
+## ✅ Testing
+
+Tested with multiple PDFs and query types including:
+
+| Query Type | Description | Status |
+|---|---|---|
+| **Summarization** | "Summarize this paper" | ✅ Passed |
+| **Specific Lookup** | "What does page 7 say about methodology?" | ✅ Passed |
+| **Comparison** | "How do the two approaches differ?" | ✅ Passed |
+| **Follow-up** | "Elaborate on the second point" (memory-aware) | ✅ Passed |
+| **No Context** | Query with no PDF uploaded | ✅ Graceful fallback |
+| **Reflection Trigger** | Intentionally vague query to trigger self-correction | ✅ Corrected |
 
 ---
 
