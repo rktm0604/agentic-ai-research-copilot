@@ -61,11 +61,16 @@ def chat_handler(message: str, history: list) -> tuple:
 
 def upload_handler(files):
     """Handle PDF file uploads."""
-    if not files:
-        return "No files selected.", update_doc_list()
+    try:
+        if not files:
+            return "No files selected.", update_doc_list()
 
-    status = handle_upload(files)
-    return status, update_doc_list()
+        status = handle_upload(files)
+        return status, update_doc_list()
+    except Exception as e:
+        import traceback
+        error_msg = f"❌ **Error during upload:** {str(e)}\n\n```python\n{traceback.format_exc()}\n```"
+        return error_msg, update_doc_list()
 
 
 def clear_handler():
@@ -233,7 +238,6 @@ def build_app() -> gr.Blocks:
                     label="Upload PDFs",
                     file_count="multiple",
                     file_types=[".pdf"],
-                    type="filepath",
                     elem_id="file-upload",
                 )
                 upload_btn = gr.Button(

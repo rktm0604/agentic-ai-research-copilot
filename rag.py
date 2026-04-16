@@ -382,8 +382,24 @@ def handle_upload(files) -> str:
         return "No files uploaded."
 
     results = []
-    for file_path in files:
+    for file_obj in files:
+        # Gradio 5/6 might return strings, dicts, or objects
+        if isinstance(file_obj, str):
+            file_path = file_obj
+        elif isinstance(file_obj, dict):
+            file_path = file_obj.get("path", file_obj.get("name", ""))
+        elif hasattr(file_obj, "path"):
+            file_path = file_obj.path
+        elif hasattr(file_obj, "name"):
+            file_path = file_obj.name
+        else:
+            file_path = str(file_obj)
+
         path = Path(file_path)
+        if not path.exists():
+            results.append(f"⚠️ Error locating file '{path.name}' temporarily.")
+            continue
+
         if path.suffix.lower() != ".pdf":
             results.append(f"⚠️ Skipped '{path.name}' — only PDFs are supported.")
             continue
