@@ -355,12 +355,16 @@ THEME = gr.themes.Soft(
     font=gr.themes.GoogleFont("Inter"),
 )
 
+import os
+
 if __name__ == "__main__":
     logger.info("Starting Agentic AI Research Copilot...")
     app = build_app()
+    
+    port = int(os.environ.get("PORT", 7860))
     app.launch(
         server_name="0.0.0.0",
-        server_port=7860,
+        server_port=port,
         share=False,
         show_error=True,
         css=CUSTOM_CSS,
