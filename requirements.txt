@@ -1,14 +1,5 @@
-# Core
-gradio>=5.0
-pypdf>=4.0
-chromadb>=1.0
-sentence-transformers>=3.0
-requests>=2.31
-python-dotenv>=1.0
-
-# Google Gemini
-google-genai>=1.0
-
-# Optional OCR
-# pytesseract
-# pdf2image
+gradio
+google-genai
+chromadb
+sentence-transformers
+pypdf

@@ -1,32 +1,7 @@
-# Python
 __pycache__/
-*.py[cod]
-*.pyo
-*.egg-info/
-dist/
-build/
-
-# Environment
-.env
-venv/
-.venv/
-
-# Data (keep repo < 1 MB)
+*.pyc
 *.pdf
-*.db
-chroma_db/
 chroma/
+chroma_db/
 uploads/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-
-# OS
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# Logs
-*.log
+.env
