@@ -4,24 +4,25 @@ rag.py — Retrieval-Augmented Generation pipeline.
 Handles the full document lifecycle:
   1. Load PDFs (native text extraction + OCR fallback)
   2. Smart chunking with page-number metadata
-  3. Embed and store in ChromaDB
+  3. Embed and store in ChromaDB (via Gemini Embeddings)
   4. Semantic search to retrieve relevant context
-
-Inspired by the RAG Study Assistant project, simplified for clarity.
 """
 
 import os
 import uuid
 import shutil
 from pathlib import Path
-from typing import Optional
 
-from pypdf import PdfReader
+try:
+    from pypdf import PdfReader
+except ImportError:
+    from PyPDF2 import PdfReader  # fallback for PyPDF2
+
 import chromadb
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+from chromadb.utils.embedding_functions import GoogleGenerativeAiEmbeddingFunction
 
 from utils import (
-    get_logger, EMBEDDING_MODEL, CHROMA_DB_PATH,
+    get_logger, GEMINI_API_KEY, CHROMA_DB_PATH,
     COLLECTION_NAME, CHUNK_SIZE, CHUNK_OVERLAP, TOP_K_RESULTS, UPLOAD_DIR,
 )
 
@@ -30,27 +31,33 @@ logger = get_logger("rag")
 # ---------------------------------------------------------------------------
 # Optional OCR support
 # ---------------------------------------------------------------------------
-OCR_AVAILABLE = True
+OCR_AVAILABLE = False
 try:
     from pdf2image import convert_from_path
     import pytesseract
+    OCR_AVAILABLE = True
 except ImportError:
-    OCR_AVAILABLE = False
     logger.info("OCR not available — install pytesseract + pdf2image for scanned PDF support")
 
 # ---------------------------------------------------------------------------
-# Embedding function (singleton)
+# Embedding function (singleton) — uses Gemini Embeddings, no PyTorch needed
 # ---------------------------------------------------------------------------
 _embedding_fn = None
 
 def _get_embedding_function():
-    """Return a cached BGE embedding function."""
+    """Return a cached Gemini embedding function."""
     global _embedding_fn
     if _embedding_fn is None:
-        _embedding_fn = SentenceTransformerEmbeddingFunction(
-            model_name=EMBEDDING_MODEL, device="cpu"
-        )
-        logger.info("Loaded embedding model: %s", EMBEDDING_MODEL)
+        if GEMINI_API_KEY:
+            _embedding_fn = GoogleGenerativeAiEmbeddingFunction(
+                api_key=GEMINI_API_KEY,
+                model_name="models/embedding-001",
+            )
+            logger.info("Loaded Gemini embedding function (models/embedding-001)")
+        else:
+            # Fallback: use ChromaDB's built-in default embeddings (no extra deps)
+            _embedding_fn = chromadb.utils.embedding_functions.DefaultEmbeddingFunction()
+            logger.warning("No GEMINI_API_KEY — using ChromaDB default embeddings (less accurate)")
     return _embedding_fn
 
 
@@ -64,15 +71,8 @@ def load_pdf(pdf_path: str) -> list[tuple[int, str]]:
     Tries PyPDF text extraction first. If the PDF is scanned/image-based
     and no text is found, falls back to OCR via pytesseract + pdf2image.
 
-    Args:
-        pdf_path: Path to the PDF file.
-
     Returns:
         List of (page_number, page_text) tuples (1-indexed).
-
-    Raises:
-        FileNotFoundError: If the PDF file does not exist.
-        ValueError: If no text could be extracted.
     """
     path = Path(pdf_path)
     if not path.exists():
@@ -164,7 +164,6 @@ def chunk_with_pages(
     if not pages:
         return []
 
-    # Build full text with character→page mapping
     full_text = ""
     char_to_page: list[int] = []
     for page_num, page_text in pages:
@@ -174,7 +173,6 @@ def chunk_with_pages(
 
     raw_chunks = _chunk_text(full_text, chunk_size, overlap)
 
-    # Map each chunk back to its source pages
     result = []
     search_start = 0
     for chunk in raw_chunks:
@@ -218,14 +216,7 @@ def _get_collection():
 
 
 def add_document(pdf_path: str) -> dict:
-    """Process a PDF and add it to the knowledge base.
-
-    Args:
-        pdf_path: Path to the PDF file.
-
-    Returns:
-        Dict with status info: {"filename", "pages", "chunks", "status"}
-    """
+    """Process a PDF and add it to the knowledge base."""
     path = Path(pdf_path)
     filename = path.name
 
@@ -238,7 +229,6 @@ def add_document(pdf_path: str) -> dict:
 
         collection = _get_collection()
 
-        # Use filename + chunk index as unique IDs (allows re-uploading)
         doc_prefix = filename.replace(" ", "_").replace(".", "_")
         ids = [f"{doc_prefix}_chunk_{i}" for i in range(len(chunks))]
 
@@ -260,12 +250,12 @@ def add_document(pdf_path: str) -> dict:
             ids=ids,
         )
 
-        total_pages = max(p for _, p_list in [(None, c["pages"]) for c in chunks] for p in (p_list or [0]))
+        total_pages = len(pages)
         logger.info("Added '%s': %d pages, %d chunks", filename, total_pages, len(chunks))
 
         return {
             "filename": filename,
-            "pages": len(pages),
+            "pages": total_pages,
             "chunks": len(chunks),
             "status": "success",
         }
@@ -276,18 +266,7 @@ def add_document(pdf_path: str) -> dict:
 
 
 def retrieve_context(query: str, top_k: int = TOP_K_RESULTS) -> tuple[str, list[str]]:
-    """Retrieve relevant context from the knowledge base.
-
-    This is the single entry point for the agent to get document context.
-
-    Args:
-        query: The user's question.
-        top_k: Number of top results to return.
-
-    Returns:
-        Tuple of (context_text, citations) where citations are like
-        ["document.pdf (p. 3, 5)", "notes.pdf (p. 12)"]
-    """
+    """Retrieve relevant context from the knowledge base."""
     collection = _get_collection()
 
     if collection.count() == 0:
@@ -308,10 +287,8 @@ def retrieve_context(query: str, top_k: int = TOP_K_RESULTS) -> tuple[str, list[
     if not documents:
         return "", []
 
-    # Build context text
     context = "\n\n---\n\n".join(documents)
 
-    # Build citation strings grouped by source file
     source_pages: dict[str, set[int]] = {}
     for meta in metadatas:
         source = meta.get("source", "unknown")
@@ -348,7 +325,6 @@ def get_document_list() -> list[dict]:
         for meta in all_data.get("metadatas", []):
             source = meta.get("source", "unknown")
             sources[source] = sources.get(source, 0) + 1
-
         return [{"name": name, "chunks": count} for name, count in sources.items()]
     except Exception:
         return []
@@ -362,7 +338,6 @@ def reset_knowledge_base():
         logger.info("Knowledge base reset")
     except Exception:
         pass
-    # Also clear the upload directory
     if UPLOAD_DIR.exists():
         for f in UPLOAD_DIR.iterdir():
             if f.is_file():
@@ -370,20 +345,13 @@ def reset_knowledge_base():
 
 
 def handle_upload(files) -> str:
-    """Process uploaded files and return a status message.
-
-    Args:
-        files: List of file paths from Gradio upload component.
-
-    Returns:
-        Human-readable status string.
-    """
+    """Process uploaded files and return a status message."""
     if not files:
         return "No files uploaded."
 
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     results = []
     for file_obj in files:
-        # Gradio 5/6 might return strings, dicts, or objects
         if isinstance(file_obj, str):
             file_path = file_obj
         elif isinstance(file_obj, dict):
@@ -397,18 +365,16 @@ def handle_upload(files) -> str:
 
         path = Path(file_path)
         if not path.exists():
-            results.append(f"⚠️ Error locating file '{path.name}' temporarily.")
+            results.append(f"⚠️ Error locating file '{path.name}'.")
             continue
 
         if path.suffix.lower() != ".pdf":
             results.append(f"⚠️ Skipped '{path.name}' — only PDFs are supported.")
             continue
 
-        # Copy to uploads directory
         dest = UPLOAD_DIR / path.name
         shutil.copy2(str(path), str(dest))
 
-        # Process the document
         info = add_document(str(dest))
         if info["status"] == "success":
             results.append(f"✅ **{info['filename']}** — {info['pages']} pages, {info['chunks']} chunks indexed")

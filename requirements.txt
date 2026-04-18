@@ -1,5 +1,7 @@
 gradio
+google-generativeai
 google-genai
 chromadb
-sentence-transformers
 pypdf
+requests
+python-dotenv

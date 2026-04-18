@@ -2,16 +2,18 @@
 app.py — Gradio UI for the Agentic AI Research Copilot.
 
 Main entry point. Run with: python app.py
-Opens a polished chat interface at http://localhost:7860
+Opens at http://localhost:7860
 
 Features:
-  - PDF upload panel with status display
-  - Chat interface with message history
+  - PDF upload panel
+  - Chat interface (Gradio messages format)
   - Agent reflection status badges
-  - Clean, modern dark-themed design
+  - Sliding-window memory sidebar
 """
 
+import os
 import gradio as gr
+
 from agent import ResearchAgent
 from rag import handle_upload, reset_knowledge_base, get_document_list
 from utils import get_logger, OLLAMA_MODEL, GEMINI_API_KEY, GEMINI_MODEL
@@ -28,18 +30,21 @@ agent = ResearchAgent()
 # ═══════════════════════════════════════════════════════════════════════════
 
 def chat_handler(message: str, history: list) -> tuple:
-    """Process a chat message through the agentic pipeline."""
+    """Process a chat message through the agentic pipeline.
+
+    Uses Gradio's messages format (list of dicts with 'role' + 'content').
+    """
     if not message.strip():
         return history, "", ""
 
-    # Add user message (Gradio 6 dict format)
+    # Add user message — dict format required for Gradio 5/6
     history.append({"role": "user", "content": message})
 
-    # Process through the agent (RAG + Reflection)
+    # Run through the full agentic pipeline (RAG → Draft → Reflect → Improve)
     result = agent.process(message)
     answer = result["answer"]
 
-    # Build reflection status badge
+    # Build reflection status badge text
     reflection = result.get("reflection")
     if reflection:
         if reflection["improved"]:
@@ -53,7 +58,7 @@ def chat_handler(message: str, history: list) -> tuple:
     else:
         badge = ""
 
-    # Add assistant response
+    # Add assistant response — dict format
     history.append({"role": "assistant", "content": answer})
 
     return history, "", badge
@@ -68,12 +73,11 @@ def upload_handler(files):
         return status, update_doc_list()
     except Exception as e:
         import traceback
-        error_msg = f"❌ **Error during upload:** {str(e)}\n\n```\n{traceback.format_exc()}\n```"
-        return error_msg, update_doc_list()
+        return f"❌ **Upload error:** {e}\n```\n{traceback.format_exc()}\n```", update_doc_list()
 
 
 def clear_handler():
-    """Clear everything — chat, memory, knowledge base."""
+    """Clear chat, memory, and knowledge base."""
     agent.memory.clear()
     reset_knowledge_base()
     return [], "", "Knowledge base cleared. Upload new documents to begin.", update_doc_list()
@@ -91,23 +95,20 @@ def update_doc_list() -> str:
 
 
 def get_agent_status() -> str:
-    """Get current agent status."""
+    """Get current agent status string."""
     return agent.get_status()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# CUSTOM CSS — Modern dark theme
+# CUSTOM CSS
 # ═══════════════════════════════════════════════════════════════════════════
 
 CUSTOM_CSS = """
-/* ── Global ─────────────────────────────────────────────────── */
 .gradio-container {
     max-width: 1100px !important;
     margin: 0 auto !important;
     font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
 }
-
-/* ── Header ─────────────────────────────────────────────────── */
 .header-section {
     text-align: center;
     padding: 20px 10px 10px;
@@ -123,79 +124,20 @@ CUSTOM_CSS = """
     -webkit-text-fill-color: transparent;
     margin: 0 0 6px !important;
     font-weight: 800 !important;
-    letter-spacing: -0.5px;
 }
-.header-section p {
-    color: #94a3b8 !important;
-    font-size: 0.95em !important;
-    margin: 0 !important;
-}
-
-/* ── Feature Pills ──────────────────────────────────────────── */
-.feature-pills {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 12px;
-    flex-wrap: wrap;
-}
+.header-section p { color: #94a3b8 !important; font-size: 0.95em !important; margin: 0 !important; }
+.feature-pills { display: flex; justify-content: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
 .pill {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 20px;
-    padding: 5px 14px;
-    font-size: 0.8em;
-    color: #cbd5e1;
-    backdrop-filter: blur(10px);
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px; padding: 5px 14px; font-size: 0.8em; color: #cbd5e1;
 }
-
-/* ── Panels ─────────────────────────────────────────────────── */
-.upload-panel, .status-panel {
-    border-radius: 12px !important;
-    border: 1px solid rgba(255,255,255,0.06) !important;
-}
-
-/* ── Chat ───────────────────────────────────────────────────── */
-.chat-area .message {
-    border-radius: 14px !important;
-}
-
-/* ── Reflection Badge ───────────────────────────────────────── */
 .reflection-badge {
-    font-size: 0.85em;
-    padding: 8px 12px;
-    border-radius: 8px;
-    border-left: 3px solid #a78bfa;
-    background: rgba(167, 139, 250, 0.08);
-    margin-top: 4px;
+    font-size: 0.85em; padding: 8px 12px; border-radius: 8px;
+    border-left: 3px solid #a78bfa; background: rgba(167, 139, 250, 0.08); margin-top: 4px;
 }
-
-/* ── Buttons ────────────────────────────────────────────────── */
-.primary-btn {
-    background: linear-gradient(135deg, #7c3aed, #3b82f6) !important;
-    border: none !important;
-    border-radius: 10px !important;
-    font-weight: 600 !important;
-    transition: all 0.3s ease !important;
-}
-.primary-btn:hover {
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3) !important;
-}
-.danger-btn {
-    background: linear-gradient(135deg, #dc2626, #ef4444) !important;
-    border: none !important;
-    border-radius: 10px !important;
-}
-
-/* ── Footer ─────────────────────────────────────────────────── */
 .footer {
-    text-align: center;
-    color: #64748b;
-    font-size: 0.78em;
-    padding: 10px;
-    border-top: 1px solid rgba(255,255,255,0.05);
-    margin-top: 8px;
+    text-align: center; color: #64748b; font-size: 0.78em;
+    padding: 10px; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 8px;
 }
 """
 
@@ -206,14 +148,11 @@ CUSTOM_CSS = """
 
 def build_app() -> gr.Blocks:
     """Construct the Gradio interface."""
-
     llm_info = f"Gemini ({GEMINI_MODEL})" if GEMINI_API_KEY else f"Ollama ({OLLAMA_MODEL})"
 
-    with gr.Blocks(
-        title="Agentic AI Research Copilot",
-    ) as app:
+    with gr.Blocks(title="Agentic AI Research Copilot") as demo:
 
-        # ── Header ─────────────────────────────────────────────
+        # Header
         gr.HTML(f"""
         <div class="header-section">
             <h1>🧠 Agentic AI Research Copilot</h1>
@@ -228,89 +167,64 @@ def build_app() -> gr.Blocks:
         """)
 
         with gr.Row():
-            # ── Left Panel: Upload & Status ────────────────────
+            # ── Left Panel ─────────────────────────────────────
             with gr.Column(scale=1, min_width=300):
-
                 gr.Markdown("### 📄 Document Upload")
                 file_upload = gr.File(
                     label="Upload PDFs",
                     file_count="multiple",
                     file_types=[".pdf"],
-                    elem_id="file-upload",
                 )
-                upload_btn = gr.Button(
-                    "📥 Process Documents",
-                    variant="primary",
-                    elem_classes=["primary-btn"],
-                )
-                upload_status = gr.Markdown(
-                    value="Upload PDFs to build your knowledge base.",
-                    elem_classes=["upload-panel"],
-                )
+                upload_btn = gr.Button("📥 Process Documents", variant="primary")
+                upload_status = gr.Markdown(value="Upload PDFs to build your knowledge base.")
 
                 gr.Markdown("---")
 
                 gr.Markdown("### 📊 System Status")
-                doc_list = gr.Markdown(
-                    value=update_doc_list(),
-                    elem_classes=["status-panel"],
-                )
+                doc_list = gr.Markdown(value=update_doc_list())
                 status_btn = gr.Button("🔄 Refresh Status", size="sm")
                 agent_status = gr.Markdown(value=get_agent_status())
 
                 gr.Markdown("---")
 
-                clear_btn = gr.Button(
-                    "🗑️ Clear Everything",
-                    variant="stop",
-                    elem_classes=["danger-btn"],
-                    size="sm",
-                )
+                clear_btn = gr.Button("🗑️ Clear Everything", variant="stop", size="sm")
 
-            # ── Right Panel: Chat ──────────────────────────────
+            # ── Right Panel ────────────────────────────────────
             with gr.Column(scale=2, min_width=500):
-
                 gr.Markdown("### 💬 Research Chat")
 
+                # CRITICAL: type="messages" + initial value=[] (not None)
                 chatbot = gr.Chatbot(
+                    label="Research Assistant",
+                    type="messages",
                     value=[],
                     height=480,
                     show_label=False,
-                    elem_classes=["chat-area"],
                     placeholder="Upload a document and ask a question...",
                 )
 
                 reflection_display = gr.Markdown(
                     value="",
                     elem_classes=["reflection-badge"],
-                    visible=True,
                 )
 
                 with gr.Row():
                     msg_input = gr.Textbox(
-                        placeholder="Ask about your documents... (e.g., 'What are the key findings?')",
+                        placeholder="Ask about your documents...",
                         show_label=False,
                         scale=5,
                         container=False,
-                        elem_id="msg-input",
                     )
-                    send_btn = gr.Button(
-                        "Send 🚀",
-                        variant="primary",
-                        scale=1,
-                        elem_classes=["primary-btn"],
-                    )
+                    send_btn = gr.Button("Send 🚀", variant="primary", scale=1)
 
                 gr.Markdown("""
                 <div class="footer">
                     🧠 <b>Agentic AI Research Copilot</b> — RAG + Reflection + Memory<br/>
-                    Built by Raktim Banerjee • Powered by Google Gemini + ChromaDB
+                    Powered by Google Gemini + ChromaDB
                 </div>
                 """)
 
         # ── Event Bindings ─────────────────────────────────────
-
-        # Chat
         send_btn.click(
             fn=chat_handler,
             inputs=[msg_input, chatbot],
@@ -321,27 +235,18 @@ def build_app() -> gr.Blocks:
             inputs=[msg_input, chatbot],
             outputs=[chatbot, msg_input, reflection_display],
         )
-
-        # Upload
         upload_btn.click(
             fn=upload_handler,
             inputs=[file_upload],
             outputs=[upload_status, doc_list],
         )
-
-        # Status
-        status_btn.click(
-            fn=get_agent_status,
-            outputs=[agent_status],
-        )
-
-        # Clear
+        status_btn.click(fn=get_agent_status, outputs=[agent_status])
         clear_btn.click(
             fn=clear_handler,
             outputs=[chatbot, msg_input, upload_status, doc_list],
         )
 
-    return app
+    return demo
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -355,12 +260,10 @@ THEME = gr.themes.Soft(
     font=gr.themes.GoogleFont("Inter"),
 )
 
-import os
-
 if __name__ == "__main__":
     logger.info("Starting Agentic AI Research Copilot...")
     demo = build_app()
-    
+
     port = int(os.environ.get("PORT", 7860))
     demo.launch(
         server_name="0.0.0.0",

@@ -40,7 +40,6 @@ LLM_TIMEOUT = int(os.environ.get("LLM_TIMEOUT", "60"))
 # ---------------------------------------------------------------------------
 # RAG Configuration
 # ---------------------------------------------------------------------------
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
 CHROMA_DB_PATH = os.environ.get("CHROMA_DB_PATH", "./chroma_db")
 COLLECTION_NAME = "research_docs"
 CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", "1000"))

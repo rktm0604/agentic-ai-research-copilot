@@ -1,7 +1,16 @@
 __pycache__/
 *.pyc
+*.pyo
 *.pdf
+*.pkl
 chroma/
 chroma_db/
 uploads/
 .env
+venv/
+.venv/
+*.egg-info/
+.pytest_cache/
+.DS_Store
+Thumbs.db
+*.log
