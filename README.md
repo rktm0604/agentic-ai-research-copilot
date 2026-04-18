@@ -1,244 +1,157 @@
-# 🧠 Agentic AI Research Copilot
+<div align="center">
+  <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f9e0/512.gif" alt="Brain Emoji" width="80" height="80">
+  
+  # Agentic AI Research Copilot
+  
+  **An autonomous, self-reflecting research assistant powered by Gemini API.**  
+  *Built for the Google Prompt Wars Hackathon 🏆*
 
-**Vertical:** AI-powered Research & Document Assistant
+  [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg?logo=python&logoColor=white)](#)
+  [![Gradio](https://img.shields.io/badge/UI-Gradio-orange.svg)](#)
+  [![Gemini API](https://img.shields.io/badge/LLM-Gemini_API-blue.svg?logo=google&logoColor=white)](#)
+  [![Google Cloud Run](https://img.shields.io/badge/Deployed_on-Cloud_Run-4285F4.svg?logo=googlecloud&logoColor=white)](#)
+  [![License](https://img.shields.io/badge/License-MIT-green.svg)](#)
+
+  **[🚀 Try the Live Demo!](https://agentic-copilot-338639382868.us-central1.run.app)**
+</div>
 
 ---
 
-## 📋 Description
+## 🌟 What is it?
 
-An **agentic AI system** that goes beyond basic chatbots. Upload research papers, ask questions, and receive **self-correcting, citation-grounded answers** powered by RAG retrieval, the Reflection pattern, and conversation memory.
+Most RAG (Retrieval-Augmented Generation) systems are simple: they fetch documents and summarize them. **Agentic AI Research Copilot** goes further. 
 
-This is not a simple LLM wrapper — it implements autonomous reasoning, self-critique, and iterative improvement before delivering a response.
+It doesn't just retrieve context; it **thinks, drafts, critiques itself, and improves its answer** before presenting it to you. Simply upload a PDF, ask a question, and let the agent navigate the context, resolve ambiguities, and ground its answers with exact page citations.
 
 ---
 
 ## ✨ Features
 
-- **PDF Upload** — Drag and drop research papers, textbooks, or reports
-- **RAG Retrieval** — Semantic search across uploaded documents using ChromaDB
-- **Self-Correcting AI** — Reflection pattern catches and fixes errors before you see them
-- **Page Citations** — Every answer includes exact source page numbers
-- **Conversation Memory** — Remembers the last 3 exchanges for contextual follow-ups
-- **Google Gemini Integration** — Primary LLM with local Ollama fallback
-- **OCR Support** — Handles scanned PDFs via pytesseract (optional)
-- **Clean Gradio UI** — Modern dark-themed interface with reflection badges
+- **🧠 Agentic Self-ReflectionLoop** — Evaluates and fixes its own mistakes before responding.
+- **📄 OCR-Powered PDF Parsing** — Handles both digital and scanned PDFs seamlessly using Tesseract OCR.
+- **🛡️ Resilient Architecture** — Uses Google Gemini API as the primary engine, dynamically falling back to local Ollama if the API fails.
+- **🎯 Dynamic Routing** — Intent Detection prevents unnecessary DB lookups by classifying queries intelligently.
+- **💬 sliding-window Memory** — Remembers the last 3 turns of conversation for deep contextual follow-ups.
+- **🚀 Zero Bloat** — Extremely lightweight. No PyTorch, no massive Transformers. Built for edge-speed using Gemini Embeddings.
 
 ---
 
-## 🏗️ Architecture
+## 📸 Screenshots
 
+*(Replace these placeholders with actual screenshots of your UI)*
+
+| Chat Interface & Reflection Badges | Document Upload & Status |
+| :---: | :---: |
+| ![Chat Interface](https://via.placeholder.com/600x400/1e1e24/a78bfa?text=Chat+Interface+Screenshot) | ![Upload Panel](https://via.placeholder.com/600x400/1e1e24/60a5fa?text=Upload+Panel+Screenshot) |
+
+---
+
+## 🏛️ Architecture & The Agentic Loop
+
+The core differentiator of this system is the **Reflection Loop**. Instead of blind retrieval, the agent grades its own homework.
+
+```mermaid
+graph TD
+    A[User Query] --> B{Intent Detection}
+    B -->|Requires Docs| C[RAG Retrieval: ChromaDB]
+    B -->|General Chat| D[Skip RAG]
+    C --> E
+    D --> E[Draft Response]
+    E --> F{Self-Reflection Critique}
+    F -->|FAIL: Incomplete / Missing Citations| G[Improve Response]
+    G --> F
+    F -->|PASS| H[Final Answer with Citations]
+    H --> I[User]
+    
+    style F fill:#302b63,stroke:#a78bfa,stroke-width:2px,color:#fff
+    style G fill:#24243e,stroke:#f97316,stroke-width:2px,color:#fff
+    style H fill:#1e40af,stroke:#60a5fa,stroke-width:2px,color:#fff
 ```
+
+### 🗣️ Prompt Engineering Insights
+The "Agentic" behavior is triggered via strict prompt chains in `agent.py`:
+1. **The Writer:** *"Answer using ONLY the provided context. Cite specific page numbers: [Source: filename (p. X)]"*
+2. **The Critic:** *"Evaluate the draft on Accuracy, Completeness, Citations, and Clarity. Reply strictly with VERDICT: PASS/FAIL and CRITIQUE."*
+3. **The Editor:** *"Your previous response was reviewed and needs improvement. Fix identified issues based on this CRITIQUE."*
+
+---
+
+## 🛠️ Tech Stack
+
+| Component | Technology Used |
+|-----------|-----------------|
+| **UI** | Gradio 5+ |
+| **Primary LLM** | Google Gemini API (`gemini-2.0-flash`) |
+| **Embeddings** | Gemini Embeddings (`models/embedding-001`) |
+| **Fallback LLM** | Ollama (`llama3.2:3b` local) |
+| **Vector Database** | ChromaDB |
+| **PDF Parsing** | PyPDF2 + Tesseract OCR |
+| **Cloud Hosting** | Google Cloud Run |
+
+---
+
+## 📂 Project Structure
+
+```text
 agentic-ai-research-copilot/
-├── app.py              # FastAPI server — main entry point
-├── static/index.html   # Custom HTML/CSS/JS frontend
-├── agent.py            # Agent logic + Reflection pattern
-├── rag.py              # RAG pipeline (PDF → chunks → vectors → search)
-├── memory.py           # Conversation memory (last 3 turns)
-├── utils.py            # Config, logging, constants
-├── requirements.txt    # Minimal dependencies
-├── .env.example        # Environment variable template
-├── .gitignore          # Keeps repo < 1 MB
-└── README.md           # This file
-```
-
-### System Flow
-
-```
-User uploads PDF  ──→  PyPDF extracts text  ──→  Smart chunking  ──→  ChromaDB (vectors)
-                                                                            │
-User asks question ──→ agent.py ──→ retrieve_context() ──→ Draft response   │
-                          │                                      │           │
-                          │              ┌───────────────────────┘           │
-                          │              ▼                                   │
-                          │     Reflection: "Is this accurate?"             │
-                          │         │ PASS → return answer                   │
-                          │         │ FAIL → regenerate with critique        │
-                          │              ▼                                   │
-                          └──→ Final answer with citations ──→ User
+├── app.py              # Gradio UI & Main Entry Point
+├── agent.py            # Agentic Loop, Intent Detection & Reflection Logic
+├── rag.py              # PDF Ingestion, Chunking, Gemini Embeddings, Retrieval
+├── memory.py           # Conversation Memory (Last 3 Turns)
+├── utils.py            # Helpers, Config, & Logging
+├── requirements.txt    # Lean Dependencies (No torch/transformers)
+├── Dockerfile          # Cloud Run Deployment Config
+└── test_app.py         # Unit Tests & Sanity Checks
 ```
 
 ---
 
-## 🧠 Agentic Patterns
+## 💻 Getting Started (Local Setup)
 
-### 1. 🔄 Reflection Pattern (Self-Correction)
-
-The core differentiator. After generating a draft response, the agent acts as its own reviewer:
-
-```
-Draft → LLM Review (Accuracy, Completeness, Citations, Clarity) → PASS/FAIL
-    └─ If FAIL → critique → improved answer → return
-    └─ If PASS → return original
-```
-
-**Implementation:** `agent.py` → `_reflect()` and `_improve_response()`
-
-#### Why Reflection?
-
-Unlike traditional RAG systems, this system **evaluates its own responses** before returning them to the user.
-
-This improves reliability by:
-- Detecting missing or incomplete answers
-- Correcting factual errors before the user sees the output
-- Ensuring better citation grounding against source documents
-- Reducing hallucinations through structured self-critique
-
-### 2. 🔍 RAG (Retrieval-Augmented Generation)
-
-Grounds all answers in uploaded document content — eliminates hallucinations:
-
-```
-Query → BGE embeddings → ChromaDB semantic search → Top-5 chunks → LLM
-```
-
-**Implementation:** `rag.py` → `retrieve_context(query)`
-
-### 3. 💬 Memory (Short-Term Context)
-
-Sliding window of last 3 conversation turns, providing continuity:
-
-```python
-memory = ConversationMemory(max_turns=3)
-memory.add(query, response, citations)
-context = memory.get_context_string()  # Injected into every LLM prompt
-```
-
-**Implementation:** `memory.py` → `ConversationMemory`
-
----
-
-## 🔗 Google Services Used
-
-| Service | Usage |
-|---------|-------|
-| **Google Gemini API** | Primary LLM for reasoning, reflection, and response generation |
-| **Model: gemini-2.0-flash** | Fast, high-quality inference for agentic workflows |
-
-Gemini is the **primary** LLM provider. If `GEMINI_API_KEY` is set, all agent calls go through Gemini. If not set (or if Gemini fails), the system automatically falls back to local Ollama.
-
----
-
-## 🚀 How to Run
-
-### 1. Clone
-
+### 1. Clone the Repo
 ```bash
 git clone https://github.com/rktm0604/agentic-ai-research-copilot.git
 cd agentic-ai-research-copilot
 ```
 
 ### 2. Install Dependencies
-
+Make sure you have Tesseract OCR installed on your OS, then run:
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure (choose one)
-
-**Option A — Google Gemini (recommended):**
-```bash
-cp .env.example .env
-# Edit .env and set: GEMINI_API_KEY=your_key_here
+### 3. Environment Variables
+Create a `.env` file in the root directory (or simply export them):
+```env
+GEMINI_API_KEY=your_google_gemini_api_key_here
+PORT=7860
 ```
 
-**Option B — Local Ollama (free, no API key):**
-```bash
-ollama pull llama3.2:3b
-ollama serve
-```
-
-### 4. Run
-
+### 4. Run the Copilot
 ```bash
 python app.py
 ```
-
-Open **http://localhost:7860** in your browser 🚀
+Open **http://localhost:7860** in your browser.
 
 ---
 
-## 📖 Example Usage
+## ☁️ Deployment (Google Cloud Run)
 
-### Step 1: Upload a Document
-Click **"Upload PDFs"** → select a research paper → click **"📥 Process Documents"**
+This project is fully containerized and optimized for Google Cloud Run source-based deployments.
 
-### Step 2: Ask a Question
-```
-User: What are the main findings of this study?
-```
+Run this simple command using the `gcloud` CLI:
 
-### Step 3: Get a Self-Corrected Answer
-```
-Agent: The study identifies three key findings:
-1. ...  [Source: paper.pdf (p. 4)]
-2. ...  [Source: paper.pdf (p. 7)]
-3. ...  [Source: paper.pdf (p. 12)]
-
-🔄 Self-Corrected — Agent improved its answer after reflection
-> Critique: "Initial draft missed citation for finding #2"
-```
-
-### Step 4: Follow Up (Memory-Aware)
-```
-User: Can you elaborate on the second point?
-Agent: Building on the previous answer, finding #2 specifically...
-       [Source: paper.pdf (p. 7, 8)]
-
-✅ Quality Verified — Response passed self-review
-```
-
-### Example Query
-
-```
-User: "Summarize the key findings from the uploaded report"
-
-Agent Response:
-- The report identifies a 42% increase in renewable energy adoption globally.
-- Solar power installations saw the largest growth due to reduced costs.
-- Wind energy adoption remained stagnant from supply chain issues.
-
-📚 Sources: Climate_Report.pdf (p. 3, 5)
+```bash
+gcloud run deploy agentic-copilot \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --memory 2Gi \
+  --set-env-vars GEMINI_API_KEY=your_actual_key_here
 ```
 
 ---
 
-## 🛠️ Tech Stack
-
-| Component | Technology |
-|-----------|------------|
-| **UI** | Gradio 5+ |
-| **Primary LLM** | Google Gemini API (gemini-2.0-flash) |
-| **Fallback LLM** | Ollama (llama3.2:3b, local) |
-| **Embeddings** | BGE-small-en-v1.5 (SentenceTransformers) |
-| **Vector Store** | ChromaDB (persistent) |
-| **PDF Parsing** | PyPDF + OCR fallback |
-
----
-
-## 📌 Assumptions
-
-- Users upload readable PDF documents (text-based or OCR-compatible scanned)
-- Internet/API access is available when using Google Gemini
-- The system is designed for small-to-medium document sets (1–20 PDFs)
-- Ollama must be running locally if Gemini API key is not configured
-
----
-
-## ✅ Testing
-
-Tested with multiple PDFs and query types including:
-
-| Query Type | Description | Status |
-|---|---|---|
-| **Summarization** | "Summarize this paper" | ✅ Passed |
-| **Specific Lookup** | "What does page 7 say about methodology?" | ✅ Passed |
-| **Comparison** | "How do the two approaches differ?" | ✅ Passed |
-| **Follow-up** | "Elaborate on the second point" (memory-aware) | ✅ Passed |
-| **No Context** | Query with no PDF uploaded | ✅ Graceful fallback |
-| **Reflection Trigger** | Intentionally vague query to trigger self-correction | ✅ Corrected |
-
----
-
-## 👤 Built By
-
-**Raktim Banerjee** — [GitHub](https://github.com/rktm0604)
+<div align="center">
+  <p>Built with ❤️ and ☕ for <b>Google Prompt Wars</b>.</p>
+</div>
