@@ -193,10 +193,9 @@ def build_app() -> gr.Blocks:
             with gr.Column(scale=2, min_width=500):
                 gr.Markdown("### 💬 Research Chat")
 
-                # CRITICAL: type="messages" + initial value=[] (not None)
+                # CRITICAL: initial value=[] (not None), removed type="messages" for Gradio 6 compatibility
                 chatbot = gr.Chatbot(
                     label="Research Assistant",
-                    type="messages",
                     value=[],
                     height=480,
                     show_label=False,
